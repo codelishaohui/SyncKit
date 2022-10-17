@@ -893,7 +893,7 @@ struct ObjectUpdate {
                         let referenceIdentifier = "\(property.objectClassName!).\(targetIdentifier)"
                         let recordID = CKRecord.ID(recordName: referenceIdentifier, zoneID: zoneID)
                         // if we set the parent we must make the action .deleteSelf, otherwise we get errors if we ever try to delete the parent record
-                        let action: CKRecord.Reference.Action = parentKey == property.name ? .deleteSelf : .none
+                        let action: CKRecord.ReferenceAction = parentKey == property.name ? .deleteSelf : .none
                         let recordReference = CKRecord.Reference(recordID: recordID, action: action)
                         record[property.name] = recordReference;
                         if parentKey == property.name {
