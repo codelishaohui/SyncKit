@@ -327,7 +327,10 @@ extension CoreDataAdapter {
                     if let index = pending.firstIndex(of: entity) {
                         pending.remove(at: index)
                     }
-                    let record = self.recordToUpload(for: entity, context: self.targetContext, parentEntity: &parentEntity)
+                    guard let record = self.recordToUpload(for: entity, context: self.targetContext, parentEntity: &parentEntity) else {
+                        entity = nil
+                        continue
+                    }
                     recordsArray.append(record)
                     includedEntityIDs.insert(entity.identifier!)
                     entity = parentEntity
@@ -337,7 +340,7 @@ extension CoreDataAdapter {
         return recordsArray
     }
     
-    func recordToUpload(for entity: QSSyncedEntity, context: NSManagedObjectContext, parentEntity: inout QSSyncedEntity?) -> CKRecord {
+    func recordToUpload(for entity: QSSyncedEntity, context: NSManagedObjectContext, parentEntity: inout QSSyncedEntity?) -> CKRecord? {
         var record: CKRecord! = storedRecord(for: entity)
         if record == nil {
             record = CKRecord(recordType: entity.entityType!,
@@ -350,6 +353,24 @@ extension CoreDataAdapter {
         let entityState = entity.entityState
         let entityType = entity.entityType!
         let changedKeys = entity.changedKeysArray
+        
+        var originalObjectIsNil: Bool = false
+        context.performAndWait {
+            originalObject = self.managedObject(entityName: entityType, identifier: objectID, context: context)
+            if originalObject == nil {
+                originalObjectIsNil = true
+            }
+        }
+        if originalObjectIsNil {
+            // Object does not exist, but tracking syncedEntity thinks it does.
+            // We mark it as deleted so the iCloud record will get deleted too
+            privateContext.performAndWait {
+                entity.entityState = .deleted
+                self.savePrivateContext()
+            }
+            return nil
+        }
+        
         
         context.performAndWait {
             originalObject = self.managedObject(entityName: entityType, identifier: objectID, context: context)
@@ -584,7 +605,12 @@ extension CoreDataAdapter {
         // Add record for this entity
         var childrenRecords = [CKRecord]()
         var parent: QSSyncedEntity?
-        childrenRecords.append(self.recordToUpload(for: entity, context: targetContext, parentEntity: &parent))
+        
+        guard let record = self.recordToUpload(for: entity, context: targetContext, parentEntity: &parent) else {
+            return []
+        }
+        
+        childrenRecords.append(record)
         
         let relationships = childrenRelationships[entity.entityType!] ?? []
         for relationship in relationships {
