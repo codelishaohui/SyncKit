@@ -354,22 +354,28 @@ extension CoreDataAdapter {
         let entityType = entity.entityType!
         let changedKeys = entity.changedKeysArray
         
-        var originalObjectIsNil: Bool = false
-        context.performAndWait {
-            originalObject = self.managedObject(entityName: entityType, identifier: objectID, context: context)
-            if originalObject == nil {
-                originalObjectIsNil = true
+        
+        //In rare cases, tracking syncedEntity with status "new" is not deleted after the Object is deleted. I can't reproduce this at the moment, but from user feedback, it does exist.
+        if entityState == .new {
+            var originalObjectIsNil: Bool = false
+
+            context.performAndWait {
+                originalObject = self.managedObject(entityName: entityType, identifier: objectID, context: context)
+                if originalObject == nil {
+                    originalObjectIsNil = true
+                }
             }
-        }
-        if originalObjectIsNil {
-            // Object does not exist, but tracking syncedEntity thinks it does.
-            // We mark it as deleted so the iCloud record will get deleted too
-            privateContext.performAndWait {
-                entity.entityState = .deleted
-                self.savePrivateContext()
+            
+            if originalObjectIsNil {
+                privateContext.performAndWait {
+                    entity.entityState = .deleted
+                    self.savePrivateContext()
+                }
+                return nil
             }
-            return nil
+            
         }
+       
         
         
         context.performAndWait {
