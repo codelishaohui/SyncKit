@@ -93,7 +93,7 @@ import CloudKit
         - completion: Closure that gets called with an optional error when the operation is completed.
      
      */
-    @objc func share(object: AnyObject, publicPermission: CKShare.Participant.Permission, participants: [CKShare.Participant], completion: ((CKShare?, Error?) -> ())?) {
+    @objc func share(object: AnyObject, publicPermission: CKShare.ParticipantPermission, participants: [CKShare.Participant], completion: ((CKShare?, Error?) -> ())?) {
         
         guard !syncing else {
             completion?(nil, CloudKitSynchronizer.SyncError.alreadySyncing)
@@ -234,7 +234,8 @@ import CloudKit
                 }
             }
         }
-        
+        operation.queuePriority = .veryHigh
+        operation.qualityOfService = .userInteractive
         database.add(operation)
     }
     
@@ -396,7 +397,8 @@ import CloudKit
                 }
             }
         }
-        
+        operation.queuePriority = .veryHigh
+        operation.qualityOfService = .userInteractive
         database.add(operation)
     }
     
@@ -456,6 +458,8 @@ import CloudKit
                         
                         uploadCompletion(operationError)
                     }
+            operation.queuePriority = .veryHigh
+            operation.qualityOfService = .userInteractive
                     self.currentOperation = operation
                     self.database.add(operation)
         },

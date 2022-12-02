@@ -33,28 +33,46 @@ class FetchDatabaseChangesOperation: CloudKitSynchronizerOperation {
 
         databaseChangesOperation.recordZoneWithIDChangedBlock = { zoneID in
             self.changedZoneIDs.append(zoneID)
+            debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> recordZoneWithIDChangedBlock")
+
         }
 
         databaseChangesOperation.recordZoneWithIDWasDeletedBlock = { zoneID in
             self.deletedZoneIDs.append(zoneID)
+            debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> recordZoneWithIDWasDeletedBlock")
+
         }
 
         databaseChangesOperation.fetchDatabaseChangesCompletionBlock = { serverChangeToken, moreComing, operationError in
+            debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> moreComing = \(moreComing)")
 
             if !moreComing {
+                
                 if operationError == nil {
+                    
                     self.completion(serverChangeToken, self.changedZoneIDs, self.deletedZoneIDs)
+                    debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> completion")
                 }
 
                 self.finish(error: operationError)
+                
+                
+                debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> finish(error: \(operationError))")
             }
+            
+            
         }
-
+        databaseChangesOperation.queuePriority = .veryHigh
+        databaseChangesOperation.qualityOfService = .userInteractive
         internalOperation = databaseChangesOperation
         database.add(databaseChangesOperation)
+        debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> add operation")
+
     }
     
     override func cancel() {
+        debugPrint("QSCloudKitSynchronizer >> FetchDatabaseChangesOperation >> cancel")
+
         internalOperation?.cancel()
         super.cancel()
     }

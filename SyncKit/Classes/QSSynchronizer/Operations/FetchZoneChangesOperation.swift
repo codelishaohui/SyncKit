@@ -60,7 +60,8 @@ class FetchZoneChangesOperation: CloudKitSynchronizerOperation {
     }
     
     func performFetchOperation(with zones: [CKRecordZone.ID]) {
-        
+        debugPrint("QSCloudKitSynchronizer >> FetchZoneChangesOperation >> performFetchOperation")
+
         var higherModelVersionFound = false
         var zoneOptions = [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneOptions]()
         
@@ -75,7 +76,8 @@ class FetchZoneChangesOperation: CloudKitSynchronizerOperation {
         operation.fetchAllChanges = false
         
         operation.recordChangedBlock = { record in
-            
+            debugPrint("QSCloudKitSynchronizer >> FetchZoneChangesOperation >> performFetchOperation >> recordChangedBlock")
+
             let ignoreDeviceIdentifier: String = self.ignoreDeviceIdentifier ?? " "
             self.dispatchQueue.async {
                 
@@ -96,6 +98,8 @@ class FetchZoneChangesOperation: CloudKitSynchronizerOperation {
         }
         
         operation.recordWithIDWasDeletedBlock = { recordID, recordType in
+            debugPrint("QSCloudKitSynchronizer >> FetchZoneChangesOperation >> performFetchOperation >> recordWithIDWasDeletedBlock")
+
             self.dispatchQueue.async {
                 self.zoneResults[recordID.zoneID]?.deletedRecordIDs.append(recordID)
             }
@@ -103,6 +107,9 @@ class FetchZoneChangesOperation: CloudKitSynchronizerOperation {
         
         operation.recordZoneFetchCompletionBlock = {
             zoneID, serverChangeToken, clientChangeTokenData, moreComing, recordZoneError in
+            
+            debugPrint("QSCloudKitSynchronizer >> FetchZoneChangesOperation >> performFetchOperation >> recordZoneFetchCompletionBlock")
+
             
             self.dispatchQueue.async {
                 
@@ -121,6 +128,9 @@ class FetchZoneChangesOperation: CloudKitSynchronizerOperation {
         
         operation.fetchRecordZoneChangesCompletionBlock = { operationError in
             
+            debugPrint("QSCloudKitSynchronizer >> FetchZoneChangesOperation >> performFetchOperation >> fetchRecordZoneChangesCompletionBlock")
+
+            
             self.dispatchQueue.async {
                 if let error = operationError,
                     (error as NSError).code != CKError.partialFailure.rawValue { // Partial errors are returned per zone
@@ -135,7 +145,8 @@ class FetchZoneChangesOperation: CloudKitSynchronizerOperation {
                 }
             }
         }
-        
+        operation.queuePriority = .veryHigh
+        operation.qualityOfService = .userInteractive
         internalOperation = operation
         self.database.add(operation)
     }

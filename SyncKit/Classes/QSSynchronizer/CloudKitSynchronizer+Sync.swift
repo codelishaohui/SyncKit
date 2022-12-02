@@ -58,7 +58,7 @@ extension CloudKitSynchronizer {
 
 extension CloudKitSynchronizer {
     
-    func postNotification(_ notification: Notification.Name, object: Any? = self, userInfo: [AnyHashable: Any]? = nil) {
+    func postNotification(_ notification: Notification.Name, object: Any? = CloudKitSynchronizer.self, userInfo: [AnyHashable: Any]? = nil) {
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: notification, object: object, userInfo: userInfo)
         }
@@ -68,6 +68,8 @@ extension CloudKitSynchronizer {
         operation.errorHandler = { [weak self] operation, error in
             self?.finishSynchronization(error: error)
         }
+        operation.queuePriority = .veryHigh
+        operation.qualityOfService = .userInteractive
         currentOperation = operation
         operationQueue.addOperation(operation)
     }
@@ -190,6 +192,7 @@ extension CloudKitSynchronizer {
         postNotification(.SynchronizerWillFetchChanges)
         delegate?.synchronizerWillCheckForChanges(self)
         fetchDatabaseChanges() { token, error in
+
             guard error == nil else {
                 self.finishSynchronization(error: error)
                 return
@@ -206,8 +209,12 @@ extension CloudKitSynchronizer {
     }
     
     func fetchDatabaseChanges(completion: @escaping (CKServerChangeToken?, Error?) -> ()) {
-        
+        debugPrint("QSCloudKitSynchronizer >> fetchDatabaseChanges >> begin")
+
         let operation = FetchDatabaseChangesOperation(database: database, databaseToken: serverChangeToken) { (token, changedZoneIDs, deletedZoneIDs) in
+            debugPrint("QSCloudKitSynchronizer >> fetchDatabaseChanges >> end")
+
+            
             self.dispatchQueue.async {
                 self.notifyProviderForDeletedZoneIDs(deletedZoneIDs)
                 
@@ -223,7 +230,12 @@ extension CloudKitSynchronizer {
                     self.delegate?.synchronizerWillFetchChanges(self, in: $0)
                 }
                 
+                debugPrint("QSCloudKitSynchronizer >> fetchZoneChanges >> begin")
+
                 self.fetchZoneChanges(zoneIDsToFetch) { error in
+                    
+                    debugPrint("QSCloudKitSynchronizer >> fetchZoneChanges >> end")
+
                     guard error == nil else {
                         self.finishSynchronization(error: error)
                         return
@@ -235,7 +247,7 @@ extension CloudKitSynchronizer {
                 }
             }
         }
-        
+      
         runOperation(operation)
     }
     
@@ -248,8 +260,11 @@ extension CloudKitSynchronizer {
             modelVersion: compatibilityVersion,
             ignoreDeviceIdentifier: nil,
             desiredKeys: nil) { (zoneResults) in
-            
+                debugPrint("QSCloudKitSynchronizer >> \(zoneResults)")
+
             self.dispatchQueue.async {
+                debugPrint("QSCloudKitSynchronizer >> dispatchQueue.async")
+
                 var pendingZones = [CKRecordZone.ID]()
                 var error: Error? = nil
                 
@@ -267,13 +282,17 @@ extension CloudKitSynchronizer {
                         }
                     } else {
                         debugPrint("QSCloudKitSynchronizer >> Downloaded \(result.downloadedRecords.count) changed records >> from zone \(zoneID.description)")
+                        
                         debugPrint("QSCloudKitSynchronizer >> Downloaded \(result.deletedRecordIDs.count) deleted record IDs >> from zone \(zoneID.description)")
                         self.activeZoneTokens[zoneID] = result.serverChangeToken
                         adapter?.saveChanges(in: result.downloadedRecords)
                         adapter?.deleteRecords(with: result.deletedRecordIDs)
                         if result.moreComing {
                             pendingZones.append(zoneID)
+                            debugPrint("QSCloudKitSynchronizer >> moreComing")
                         } else {
+                            debugPrint("QSCloudKitSynchronizer >> synchronizerDidFetchChanges")
+
                             self.delegate?.synchronizerDidFetchChanges(self, in: zoneID)
                         }
                     }
@@ -442,7 +461,7 @@ extension CloudKitSynchronizer {
                 }
             }
         }
-        
+      
         runOperation(modifyRecordsOperation)
     }
     
@@ -478,7 +497,8 @@ extension CloudKitSynchronizer {
                 }
             }
         }
-        
+        modifyRecordsOperation.queuePriority = .veryHigh
+        modifyRecordsOperation.qualityOfService = .userInteractive
         currentOperation = modifyRecordsOperation
         database.add(modifyRecordsOperation)
     }
@@ -504,6 +524,7 @@ extension CloudKitSynchronizer {
                 }
             }
         }
+       
         runOperation(operation)
     }
     
@@ -546,6 +567,7 @@ extension CloudKitSynchronizer {
                 }
             }
         }
+        
         runOperation(operation)
     }
     

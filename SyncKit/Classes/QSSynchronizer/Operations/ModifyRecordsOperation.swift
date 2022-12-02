@@ -41,7 +41,8 @@ class ModifyRecordsOperation: CloudKitSynchronizerOperation {
             
             self.completion(saved, deleted, self.conflictedRecords, operationError)
         }
-        
+        operation.queuePriority = .veryHigh
+        operation.qualityOfService = .userInteractive
         internalOperation = operation
         database.add(operation)
     }
